@@ -1,6 +1,7 @@
 "use strict";
 const express = require("express");
 const serverless = require("serverless-http");
+const cors = require('cors');
 const app = express();
 const pinyin = require("pinyin");
 
@@ -15,6 +16,7 @@ router.get("/", (req, res) => {
   });
 });
 
+app.use(cors())
 app.use("/.netlify/functions/server", router);
 
 module.exports = app;
