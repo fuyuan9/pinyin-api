@@ -1,9 +1,9 @@
-"use strict";
+"use textict";
 const express = require("express");
 const serverless = require("serverless-http");
 const cors = require("cors");
 const app = express();
-const pinyinConverter = require("pinyin");
+const convertToPinyin = require("pinyin");
 const PINYIN_DICT = require("pinyin/data/dict-zi");
 
 const router = express.Router();
@@ -17,61 +17,56 @@ router.get(
     const input = decodeURI(req.query.q || "");
     const letters = input.split("");
     let chunks = [];
-    let nohans = "";
+    let nonHanziText = "";
     let pinyinList = [];
-    let outputBuff = [];
     for (let i = 0; i < letters.length; i++) {
       const letter = letters[i];
       const firstCharCode = letter.charCodeAt(0);
       if (PINYIN_DICT[firstCharCode]) {
-        if (nohans !== "") {
-          chunks.push({ isHanzi: false, str: nohans });
-          nohans = "";
+        if (nonHanziText !== "") {
+          chunks.push({ isHanzi: false, text: nonHanziText });
+          nonHanziText = "";
         }
-        chunks.push({ isHanzi: true, str: letter });
+        chunks.push({ isHanzi: true, text: letter });
       } else {
-        // non chinese
-        nohans = nohans + letter;
+        nonHanziText = nonHanziText + letter;
       }
     }
-    if (nohans != "") {
-      chunks.push({ isHanzi: false, str: nohans });
-      nohans = "";
+    if (nonHanziText != "") {
+      chunks.push({ isHanzi: false, text: nonHanziText });
+      nonHanziText = "";
     }
 
     for (let j = 0; j < chunks.length; j++) {
       const token = chunks[j];
       const isHanzi = token.isHanzi;
-      const str = token.str;
-      if (isHanzi) {
-        const pinyinData = pinyinConverter(str, {
-          heteronym: true,
-        });
-        pinyinList.push({
-          hanzi: str,
-          pinyin: pinyinData.length > 0 ? pinyinData[0] : [],
-        });
-        const pinyinDataString = pinyinData.map((item) => {
-          const _item = [...item];
-          const first = _item.shift();
-          const others = _item.length > 0 ? " (" + _item.join(", ") + ")" : "";
-          return first + others;
-        });
-        outputBuff.push(pinyinDataString);
-      } else {
-        pinyinList.push({
-          hanzi: str,
-          pinyin: [],
-        });
-        outputBuff.push(str);
-      }
+      const text = token.text;
+      const pinyinData = isHanzi
+        ? convertToPinyin(text, {
+            heteronym: true,
+          })
+        : [];
+      const pinyin = pinyinData.length > 0 ? pinyinData[0] : [];
+      pinyinList.push({
+        isHanzi,
+        text,
+        pinyin,
+      });
     }
-    const output = outputBuff.join(" ");
+
+    const segmentedPinyinData = convertToPinyin(input, {
+      heteronym: true,
+      segment: true,
+    });
+    const output = segmentedPinyinData
+      .flat()
+      .filter((e) => /\S/.test(e))
+      .join(" ");
 
     res.json({
-      input: input,
-      output: output,
-      pinyin: pinyinList,
+      input,
+      output,
+      pinyinList,
     });
   }
 );
